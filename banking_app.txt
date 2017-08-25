@@ -1,0 +1,187 @@
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      categories: [],
+      totalBalance: 5725,
+      transactions: {
+        '8/21': [{
+          name: 'Mike & Ike Bakery',
+          amount: 30
+        }, {
+          name: 'Check #1234',
+          amount: 1050
+        }],
+
+        '8/15': [{
+          name: 'Dry Cleaning',
+          amount: 25
+        }]
+      }
+    }
+    this.currency = '$';
+    //get the flattened list of transactions
+    const transactions = Object.keys(this.state.transactions).map(
+      (transactionDate) => {
+        return (this.state.transactions[transactionDate]).map(
+                  (transaction)=>
+                  Object.assign({date:transactionDate}, transaction)
+                )
+      }); 
+    this.state.flattenedTransactions = [].concat.apply([], transactions); 
+  }
+  
+  /*Handles change of a transaction's category*/
+  categoryChanged = (name, e) => {
+    const newCategory = e.target.value;
+    this.setState(
+      {
+        flattenedTransactions:(this
+                               .state
+                               .flattenedTransactions
+                               .map((transaction)=> transaction.name == name ? Object.assign(transaction, {category:newCategory}) : transaction))});
+  };
+  
+  /*Adds a new category to the category list*/
+  addCategory = (e) => {
+    //if the key pressed is not 'enter', donothing
+    if (e.type == 'keypress'  &&  e.which != 13) {
+      return;
+    } 
+    const newCategory = e.target.value;
+    if (newCategory && newCategory != '') {
+      this.setState({categories:this.state.categories.concat([newCategory])});
+      //reset the input value to make it ready for adding another new category
+      this.addCatInput.value = '';
+    }
+  };
+  
+  /*Deletes a category from the category list*/
+  deleteCategory = (e) => {
+    const categoryToDelete = e.target.value;
+    this.setState({categories:this.state.categories.filter((category) => category != categoryToDelete)});
+  };
+  
+  /*Toggles the category into edit mode*/
+  toggleEditCat = (e) => {
+    this.setState({editingCategory:e.target.value});
+  };
+  
+  /*Edits the category*/
+  editCategory = (oldValue, e) => {
+    //if the key pressed is not 'enter', donothing
+    if (e.type == 'keypress'  &&  e.which != 13) {
+      return;
+    } 
+    const categoryToEdit = oldValue;
+    const newValue = e.target.value;
+    this.setState({categories:this.state.categories.map((category) => category == categoryToEdit ? newValue : category)});
+    //reset the editingCategory to toggle the category to read-only mode
+    this.setState({editingCategory:''});
+  };
+  
+  render() {
+    const transactionRows = this
+                            .state
+                            .flattenedTransactions
+                            .map((transaction) => 
+                                  <tr key={transaction.name}> 
+                                    <td> {transaction.date} </td>
+                                    <td> {transaction.name} </td>
+                                    <td> 
+                                        <TransactionCategory 
+                                          categoryList = {this.state.categories} 
+                                          selected = {transaction.category} 
+                                          transactionName = {transaction.name}
+                                          onChange = {this.categoryChanged}
+                                        />
+                                    </td>
+                                    <td> {transaction.amount} </td>
+                                  </tr>
+                                );
+    const categoryListToManage = this
+                                 .state
+                                 .categories
+                                 .map((category) => 
+                                         {
+                                            //hide the category 'None'
+                                            if (category == 'None') {
+                                              return;
+                                            }
+
+                                            const editCatInput = <input 
+                                                                   type = "text" 
+                                                                   placeholder = {category} 
+                                                                   onKeyPress = {(e) => this.editCategory(category, e)}
+                                                                   onBlur = {(e) => this.editCategory(category, e)}
+                                                                 />;
+                                            return (
+                                              <li> 
+                                                {this.state.editingCategory == category ? editCatInput : category} 
+                                                <input 
+                                                  type = "image" 
+                                                  onClick = {this.deleteCategory} 
+                                                  value = {category} 
+                                                  className = "button"
+                                                  src = "https://icons.iconarchive.com/icons/oxygen-icons.org/oxygen/256/Actions-edit-delete-icon.png" 
+                                                />
+                                                <input 
+                                                  type = "image" 
+                                                  onClick = {this.toggleEditCat} 
+                                                  value = {category} 
+                                                  className = "button" 
+                                                  src = "https://icons.iconarchive.com/icons/custom-icon-design/flatastic-1/512/edit-icon.png"
+                                                />
+                                              </li>
+                                            )
+                                         }
+                                      );
+    return ( 
+      <div>
+        <h2> Bank Statement </h2>
+        <div className="balance" ><span className="current_balance_header"> Current Balance: {this.currency}{this.state.totalBalance} </span></div>
+        <div className="transactions"> <span className="transactions_header">Transactions: </span>
+          <table>
+            <tr>
+              <th>Posting-Date</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Amount</th>
+            </tr>
+            {transactionRows}
+          </table>
+        </div>
+        <div className="manage_categories">
+          <span className="manage_categories_header">Manage Categories:</span>
+        <ul>
+          {categoryListToManage} 
+          <li> 
+            <input 
+              type="text" 
+              placeholder="Add New Category" 
+              ref = {(input) => this.addCatInput = input} 
+              onKeyPress = {this.addCategory} 
+              onBlur = {this.addCategory} 
+             />
+          </li>
+        </ul>
+        </div>
+      </div>
+    );
+  }
+}
+
+/*Component to display Category dropdown for each Transaction */
+class TransactionCategory extends React.Component {
+  render() {
+    return (
+      <select value = {this.props.selected} onChange = { (e) => this.props.onChange(this.props.transactionName, e) }>
+        <option value = '' > None </option>
+        {this.props.categoryList.map((category) => <option value = {category} > {category} </option>)}
+       </select>
+    );
+  }
+}
+
+ReactDOM.render(<App />, document.getElementById('container'));
